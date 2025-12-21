@@ -1,0 +1,1 @@
+curl -X POST -d "username=admin@evoting.local&password=Admin123!" -c cookies.txt http://localhost:8888/admin/login
