@@ -69,4 +69,18 @@ public class WebController {
             return "redirect:/voter/elections";
         }
     }
+
+    @GetMapping("/voter/elections/{electionId}/results")
+    public String voterResults(@PathVariable Long electionId, Model model) {
+        Optional<Election> electionOpt = electionService.getElectionById(electionId);
+        if (electionOpt.isPresent()) {
+            model.addAttribute("election", electionOpt.get());
+            model.addAttribute("electionId", electionId);
+            return "voter-results"; // Results page template
+        } else {
+            // Election not found, redirect to elections page
+            return "redirect:/voter/elections";
+        }
+    }
 }
+

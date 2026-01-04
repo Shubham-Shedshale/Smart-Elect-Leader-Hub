@@ -425,7 +425,7 @@ public class VoterController {
                 ));
             }
 
-            if (!election.getResultsPublished()) {
+            if (election.getResultsPublished() == null || !election.getResultsPublished()) {
                 return ResponseEntity.badRequest().body(Map.of(
                     "error", "Results not published",
                     "message", "The results for this election have not been published yet"
