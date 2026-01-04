@@ -1,20 +1,17 @@
 package com.evoting.service;
 
-import com.evoting.model.User;
-import com.evoting.model.Election;
-import com.evoting.model.Candidate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
+import com.evoting.model.Candidate;
+import com.evoting.model.Election;
+import com.evoting.model.User;
 
 @Service
 public class EmailService {
@@ -53,7 +50,7 @@ public class EmailService {
         message.setFrom(fromEmail);
         message.setTo(user.getEmail());
         message.setSubject("Welcome to Electronic Voting System");
-        
+
         String text = String.format(
             "Welcome %s!\n\n" +
             "Your account has been created successfully in the Electronic Voting System.\n\n" +
@@ -65,7 +62,46 @@ public class EmailService {
             user.getEmail(),
             baseUrl
         );
-        
+
+        message.setText(text);
+        mailSender.send(message);
+    }
+
+    public void sendVoterCredentialsEmail(User user, String plainPassword) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(user.getEmail());
+        message.setSubject("Your Voter Account Credentials - Electronic Voting System");
+
+        String semesterInfo = user.getSemester() != null ? user.getSemester().getDisplayName() : "Not specified";
+        String departmentInfo = user.getDepartment() != null ? user.getDepartment() : "Not specified";
+
+        String text = String.format(
+            "Hello,\n\n" +
+            "Your voter account has been created in the Electronic Voting System.\n\n" +
+            "Here are your login credentials:\n\n" +
+            "Username: %s\n" +
+            "Email: %s\n" +
+            "Password: %s\n" +
+            "Semester: %s\n" +
+            "Department: %s\n\n" +
+            "Please log in using these credentials:\n" +
+            "Login URL: %s/login\n\n" +
+            "Important:\n" +
+            "- Keep this information secure\n" +
+            "- Change your password after first login if desired\n" +
+            "- You will receive notifications when elections for your semester and department become available\n\n" +
+            "Thank you for participating in our democratic process!\n\n" +
+            "Best regards,\n" +
+            "Electronic Voting System Team",
+            user.getEmail(),
+            user.getEmail(),
+            plainPassword,
+            semesterInfo,
+            departmentInfo,
+            baseUrl
+        );
+
         message.setText(text);
         mailSender.send(message);
     }

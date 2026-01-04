@@ -12,6 +12,7 @@ import com.evoting.model.Announcement;
 import com.evoting.model.AnnouncementType;
 import com.evoting.model.Election;
 import com.evoting.model.ElectionStatus;
+import com.evoting.model.Semester;
 import com.evoting.repository.AnnouncementRepository;
 import com.evoting.repository.ElectionRepository;
 
@@ -30,12 +31,34 @@ public class ElectionService {
     
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private CandidateService candidateService;
     
     public Election createElection(String title, String description, LocalDateTime startDate, LocalDateTime endDate, Long createdBy) {
         Election election = new Election(title, description, startDate, endDate);
         election.setCreatedBy(createdBy);
         election.setStatus(ElectionStatus.DRAFT);
-        
+
+        return electionRepository.save(election);
+    }
+
+    public Election createElectionWithSemester(String title, String description, LocalDateTime startDate, LocalDateTime endDate, Long createdBy, Semester semester) {
+        Election election = new Election(title, description, startDate, endDate);
+        election.setCreatedBy(createdBy);
+        election.setSemester(semester);
+        election.setStatus(ElectionStatus.DRAFT);
+
+        return electionRepository.save(election);
+    }
+
+    public Election createElectionWithSemesterAndDepartment(String title, String description, LocalDateTime startDate, LocalDateTime endDate, Long createdBy, Semester semester, String department) {
+        Election election = new Election(title, description, startDate, endDate);
+        election.setCreatedBy(createdBy);
+        election.setSemester(semester);
+        election.setDepartment(department);
+        election.setStatus(ElectionStatus.DRAFT);
+
         return electionRepository.save(election);
     }
     
@@ -168,27 +191,69 @@ public class ElectionService {
             Election election = electionOpt.get();
             election.setStatus(ElectionStatus.COMPLETED);
             Election savedElection = electionRepository.save(election);
-            
-            // Create completion announcement
-            createElectionAnnouncement(savedElection, "Election Completed", 
-                "The election '" + election.getTitle() + "' has concluded. " +
-                "Results will be announced soon.", AnnouncementType.RESULTS_ANNOUNCEMENT);
-            
+
+            // Note: Results are no longer automatically announced.
+            // Admin must manually publish results using publishElectionResults()
+
+            return savedElection;
+        }
+        throw new RuntimeException("Election not found with id: " + id);
+    }
+
+    public Election publishElectionResults(Long id) {
+        Optional<Election> electionOpt = electionRepository.findById(id);
+        if (electionOpt.isPresent()) {
+            Election election = electionOpt.get();
+
+            // Only allow publishing if election is completed
+            if (election.getStatus() != ElectionStatus.COMPLETED) {
+                throw new RuntimeException("Cannot publish results for an election that is not completed");
+            }
+
+            // Mark results as published
+            election.setResultsPublished(true);
+            Election savedElection = electionRepository.save(election);
+
+            // Send results announcement to all voters
+            sendElectionResultsAnnouncement(savedElection);
+
             return savedElection;
         }
         throw new RuntimeException("Election not found with id: " + id);
     }
     
     public void sendVotingInvitations(Election election) {
-        // Get all active voters
-        userService.getVoters().forEach(voter -> {
-            String votingUrl = "http://localhost:8080/vote/" + election.getId();
-            try {
-                emailService.sendVotingInvitation(voter, election, votingUrl);
-            } catch (Exception e) {
-                System.err.println("Failed to send voting invitation to " + voter.getEmail() + ": " + e.getMessage());
-            }
-        });
+        // Get all active voters and filter by semester and department if specified
+        List<com.evoting.model.User> allVoters = userService.getVoters();
+
+        allVoters.stream()
+            .filter(voter -> {
+                // If election has semester restriction, check if voter matches
+                if (election.getSemester() != null) {
+                    if (voter.getSemester() == null || !voter.getSemester().equals(election.getSemester())) {
+                        return false;
+                    }
+                }
+
+                // If election has department restriction, check if voter matches
+                if (election.getDepartment() != null && !election.getDepartment().trim().isEmpty()) {
+                    if (voter.getDepartment() == null || !voter.getDepartment().equals(election.getDepartment())) {
+                        return false;
+                    }
+                }
+
+                return true; // Voter is eligible
+            })
+            .forEach(voter -> {
+                String votingUrl = "http://localhost:8080/vote/" + election.getId();
+                try {
+                    emailService.sendVotingInvitation(voter, election, votingUrl);
+                    System.out.println("Sent voting invitation to " + voter.getEmail() +
+                                     " (Semester: " + voter.getSemester() + ", Department: " + voter.getDepartment() + ")");
+                } catch (Exception e) {
+                    System.err.println("Failed to send voting invitation to " + voter.getEmail() + ": " + e.getMessage());
+                }
+            });
     }
     
     private void createElectionAnnouncement(Election election, String title, String content, AnnouncementType type) {
@@ -196,6 +261,47 @@ public class ElectionService {
         announcement.setCreatedBy(election.getCreatedBy());
         announcement.publish();
         announcementRepository.save(announcement);
+    }
+
+    private void sendElectionResultsAnnouncement(Election election) {
+        // Create announcement for published results
+        createElectionAnnouncement(election, "Election Results Published",
+            "The results for the election '" + election.getTitle() + "' are now available. " +
+            "You can view the final results in your dashboard.",
+            AnnouncementType.RESULTS_ANNOUNCEMENT);
+
+        // Get all active voters and filter by semester and department if specified
+        List<com.evoting.model.User> allVoters = userService.getVoters();
+        List<com.evoting.model.Candidate> candidates = candidateService.getCandidatesByElectionId(election.getId());
+
+        allVoters.stream()
+            .filter(voter -> {
+                // If election has semester restriction, check if voter matches
+                if (election.getSemester() != null) {
+                    if (voter.getSemester() == null || !voter.getSemester().equals(election.getSemester())) {
+                        return false;
+                    }
+                }
+
+                // If election has department restriction, check if voter matches
+                if (election.getDepartment() != null && !election.getDepartment().trim().isEmpty()) {
+                    if (voter.getDepartment() == null || !voter.getDepartment().equals(election.getDepartment())) {
+                        return false;
+                    }
+                }
+
+                return true; // Voter is eligible
+            })
+            .forEach(voter -> {
+                try {
+                    String resultsUrl = "http://localhost:8080/results/" + election.getId();
+                    emailService.sendElectionResults(election, candidates, resultsUrl);
+                    System.out.println("Sent results notification to " + voter.getEmail() +
+                                     " (Semester: " + voter.getSemester() + ", Department: " + voter.getDepartment() + ")");
+                } catch (Exception e) {
+                    System.err.println("Failed to send results email to " + voter.getEmail() + ": " + e.getMessage());
+                }
+            });
     }
     
     public long getTotalVotes(Long electionId) {
@@ -259,5 +365,3 @@ public class ElectionService {
         }
     }
 }
-
-

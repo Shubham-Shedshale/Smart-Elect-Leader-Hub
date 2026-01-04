@@ -12,6 +12,7 @@ com\evoting\repository\UserRepository.class
 com\evoting\repository\AnnouncementRepository.class
 com\evoting\controller\AuthController$VerifyOTPRequest.class
 com\evoting\controller\AuthController$SetPasswordRequest.class
+com\evoting\model\Semester.class
 com\evoting\service\ElectionService.class
 com\evoting\controller\VoterController.class
 com\evoting\controller\AuthController$LoginRequest.class

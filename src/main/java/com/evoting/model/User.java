@@ -1,15 +1,28 @@
 package com.evoting.model;
 
-import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "users", indexes = {
@@ -60,6 +73,13 @@ public class User {
     
     @Column(name = "created_by")
     private Long createdBy;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "semester")
+    private Semester semester;
+
+    @Column(name = "department")
+    private String department;
 
     @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -178,7 +198,23 @@ public class User {
     public void setCreatedBy(Long createdBy) {
         this.createdBy = createdBy;
     }
-    
+
+    public Semester getSemester() {
+        return semester;
+    }
+
+    public void setSemester(Semester semester) {
+        this.semester = semester;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
     public List<Vote> getVotes() {
         return votes;
     }

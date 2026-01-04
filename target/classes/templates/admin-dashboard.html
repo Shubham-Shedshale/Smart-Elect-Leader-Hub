@@ -991,6 +991,39 @@
                             <label for="endDate" class="form-label">End Date & Time *</label>
                             <input type="datetime-local" class="form-control" id="endDate" required>
                         </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="electionSemester" class="form-label">Semester (Optional)</label>
+                                <select class="form-select" id="electionSemester">
+                                    <option value="">All Semesters</option>
+                                    <option value="SEMESTER_1">1st Semester</option>
+                                    <option value="SEMESTER_2">2nd Semester</option>
+                                    <option value="SEMESTER_3">3rd Semester</option>
+                                    <option value="SEMESTER_4">4th Semester</option>
+                                    <option value="SEMESTER_5">5th Semester</option>
+                                    <option value="SEMESTER_6">6th Semester</option>
+                                    <option value="SEMESTER_7">7th Semester</option>
+                                    <option value="SEMESTER_8">8th Semester</option>
+                                </select>
+                                <div class="form-text">Leave empty to make election available to all semesters</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="electionDepartment" class="form-label">Department (Optional)</label>
+                                <select class="form-select" id="electionDepartment">
+                                    <option value="">All Departments</option>
+                                    <option value="Computer Science">Computer Science</option>
+                                    <option value="Information Technology">Information Technology</option>
+                                    <option value="Mechanical Engineering">Mechanical Engineering</option>
+                                    <option value="Electrical Engineering">Electrical Engineering</option>
+                                    <option value="Civil Engineering">Civil Engineering</option>
+                                    <option value="Business Administration">Business Administration</option>
+                                    <option value="Commerce">Commerce</option>
+                                    <option value="Arts">Arts</option>
+                                    <option value="Science">Science</option>
+                                </select>
+                                <div class="form-text">Leave empty to make election available to all departments</div>
+                            </div>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -1066,6 +1099,37 @@
                             <label for="voterPassword" class="form-label">Password *</label>
                             <input type="password" class="form-control" id="voterPassword" required>
                             <div class="form-text">Password must be at least 6 characters long</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="voterSemester" class="form-label">Semester *</label>
+                                <select class="form-select" id="voterSemester" required>
+                                    <option value="">Select Semester</option>
+                                    <option value="SEMESTER_1">1st Semester</option>
+                                    <option value="SEMESTER_2">2nd Semester</option>
+                                    <option value="SEMESTER_3">3rd Semester</option>
+                                    <option value="SEMESTER_4">4th Semester</option>
+                                    <option value="SEMESTER_5">5th Semester</option>
+                                    <option value="SEMESTER_6">6th Semester</option>
+                                    <option value="SEMESTER_7">7th Semester</option>
+                                    <option value="SEMESTER_8">8th Semester</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="voterDepartment" class="form-label">Department *</label>
+                                <select class="form-select" id="voterDepartment" required>
+                                    <option value="">Select Department</option>
+                                    <option value="Computer Science">Computer Science</option>
+                                    <option value="Information Technology">Information Technology</option>
+                                    <option value="Mechanical Engineering">Mechanical Engineering</option>
+                                    <option value="Electrical Engineering">Electrical Engineering</option>
+                                    <option value="Civil Engineering">Civil Engineering</option>
+                                    <option value="Business Administration">Business Administration</option>
+                                    <option value="Commerce">Commerce</option>
+                                    <option value="Arts">Arts</option>
+                                    <option value="Science">Science</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="voterRole" class="form-label">Role *</label>
@@ -1510,6 +1574,10 @@
                                                 `<li><a class="dropdown-item" href="#" onclick="completeElection(${election.id})">
                                                     <i class="fas fa-check-circle text-success"></i> Mark as Completed
                                                 </a></li>` : ''}
+                                            ${election.status === 'COMPLETED' ?
+                                                `<li><a class="dropdown-item" href="#" onclick="publishElectionResults(${election.id})">
+                                                    <i class="fas fa-bullhorn text-primary"></i> Publish Results
+                                                </a></li>` : ''}
                                             <li><hr class="dropdown-divider"></li>
                                             <li><a class="dropdown-item text-danger" href="#" onclick="deleteElection(${election.id})">
                                                 <i class="fas fa-trash"></i> Delete
@@ -1550,12 +1618,14 @@
             const description = document.getElementById('electionDescription').value;
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
-            
+            const semester = document.getElementById('electionSemester').value;
+            const department = document.getElementById('electionDepartment').value;
+
             if (!title || !startDate || !endDate) {
                 alert('Please fill in all required fields');
                 return;
             }
-            
+
             try {
                 const response = await fetch('/api/admin/elections', {
                     method: 'POST',
@@ -1567,12 +1637,14 @@
                         description,
                         startDate: adjustDateTimeForTimezone(startDate),
                         endDate: adjustDateTimeForTimezone(endDate),
+                        semester: semester || null,
+                        department: department || null,
                         createdBy: 1 // Assuming admin ID 1 for demo
                     })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok && data.success) {
                     alert('Election created successfully!');
                     bootstrap.Modal.getInstance(document.getElementById('createElectionModal')).hide();
@@ -1765,6 +1837,31 @@
                     loadDashboardStats();
                 } else {
                     alert(data.message || 'Failed to complete election');
+                }
+            } catch (error) {
+                alert('Network error. Please try again.');
+            }
+        }
+
+        async function publishElectionResults(id) {
+            if (!confirm('Are you sure you want to publish the election results? This will send notifications to all voters.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/elections/${id}/publish-results`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    alert('Election results published successfully! Voters have been notified.');
+                    loadRecentElections();
+                    loadAllElections();
+                    loadDashboardStats();
+                } else {
+                    alert(data.message || 'Failed to publish election results');
                 }
             } catch (error) {
                 alert('Network error. Please try again.');
@@ -2539,9 +2636,16 @@
             const email = document.getElementById('voterEmail').value;
             const password = document.getElementById('voterPassword').value;
             const role = document.getElementById('voterRole').value;
+            const semester = document.getElementById('voterSemester').value;
+            const department = document.getElementById('voterDepartment').value;
 
             if (!firstName || !lastName || !email || !password || !role) {
                 alert('Please fill in all required fields');
+                return;
+            }
+
+            if (role === 'VOTER' && (!semester || !department)) {
+                alert('Semester and Department are required for voter accounts');
                 return;
             }
 
@@ -2561,7 +2665,9 @@
                         password,
                         role,
                         firstName,
-                        lastName
+                        lastName,
+                        semester,
+                        department
                     })
                 });
 

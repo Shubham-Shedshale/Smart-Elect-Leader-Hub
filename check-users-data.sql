@@ -16,6 +16,7 @@ SELECT
     first_name,
     last_name,
     role,
+    password_hash,
     is_active,
     is_verified,
     created_at

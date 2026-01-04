@@ -1,17 +1,18 @@
 package com.evoting.service;
 
-import com.evoting.model.User;
-import com.evoting.model.UserRole;
-import com.evoting.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.evoting.model.Semester;
+import com.evoting.model.User;
+import com.evoting.model.UserRole;
+import com.evoting.repository.UserRepository;
 
 @Service
 @Transactional
@@ -30,26 +31,83 @@ public class UserService {
         if (userRepository.existsByEmail(email)) {
             throw new RuntimeException("User with email " + email + " already exists");
         }
-        
+
         User user = new User();
         user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(password));
         user.setRole(role);
         user.setIsActive(true);
         user.setIsVerified(role == UserRole.VOTER || role == UserRole.ADMIN); // Voters and Admins are auto-verified for demo
-        
+
         User savedUser = userRepository.save(user);
-        
-        // Send welcome email to voters
+
+        // Send welcome email with credentials to voters
         if (role == UserRole.VOTER) {
             try {
-                emailService.sendWelcomeEmail(savedUser);
+                emailService.sendVoterCredentialsEmail(savedUser, password);
             } catch (Exception e) {
                 // Log error but don't fail user creation
-                System.err.println("Failed to send welcome email: " + e.getMessage());
+                System.err.println("Failed to send credentials email: " + e.getMessage());
             }
         }
-        
+
+        return savedUser;
+    }
+
+    public User createUserWithSemester(String email, String password, UserRole role, Semester semester) {
+        if (userRepository.existsByEmail(email)) {
+            throw new RuntimeException("User with email " + email + " already exists");
+        }
+
+        User user = new User();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setRole(role);
+        user.setSemester(semester);
+        user.setIsActive(true);
+        user.setIsVerified(role == UserRole.VOTER || role == UserRole.ADMIN); // Voters and Admins are auto-verified for demo
+
+        User savedUser = userRepository.save(user);
+
+        // Send welcome email with credentials to voters
+        if (role == UserRole.VOTER) {
+            try {
+                emailService.sendVoterCredentialsEmail(savedUser, password);
+            } catch (Exception e) {
+                // Log error but don't fail user creation
+                System.err.println("Failed to send credentials email: " + e.getMessage());
+            }
+        }
+
+        return savedUser;
+    }
+
+    public User createUserWithSemesterAndDepartment(String email, String password, UserRole role, Semester semester, String department) {
+        if (userRepository.existsByEmail(email)) {
+            throw new RuntimeException("User with email " + email + " already exists");
+        }
+
+        User user = new User();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setRole(role);
+        user.setSemester(semester);
+        user.setDepartment(department);
+        user.setIsActive(true);
+        user.setIsVerified(role == UserRole.VOTER || role == UserRole.ADMIN); // Voters and Admins are auto-verified for demo
+
+        User savedUser = userRepository.save(user);
+
+        // Send welcome email with credentials to voters
+        if (role == UserRole.VOTER) {
+            try {
+                emailService.sendVoterCredentialsEmail(savedUser, password);
+            } catch (Exception e) {
+                // Log error but don't fail user creation
+                System.err.println("Failed to send credentials email: " + e.getMessage());
+            }
+        }
+
         return savedUser;
     }
     

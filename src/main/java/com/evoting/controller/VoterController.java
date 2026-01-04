@@ -1,16 +1,37 @@
 package com.evoting.controller;
 
-import com.evoting.model.*;
-import com.evoting.service.*;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.*;
+import com.evoting.model.Announcement;
+import com.evoting.model.Candidate;
+import com.evoting.model.Election;
+import com.evoting.model.Semester;
+import com.evoting.model.User;
+import com.evoting.model.Vote;
+import com.evoting.service.AnnouncementService;
+import com.evoting.service.CandidateService;
+import com.evoting.service.ElectionService;
+import com.evoting.service.UserService;
+import com.evoting.service.VoteService;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 
 @RestController
 @RequestMapping("/api/voter")
@@ -32,7 +53,7 @@ public class VoterController {
     @Autowired
     private UserService userService;
     
-    // Get active elections for voting
+    // Get active elections for voting (filtered by user's semester)
     @GetMapping("/elections/active")
     public ResponseEntity<?> getActiveElections() {
         try {
@@ -40,14 +61,32 @@ public class VoterController {
             List<Election> activeElections = electionService.getActiveElections();
             System.out.println("DEBUG: Found " + activeElections.size() + " active elections");
 
-            // Enrich with voting status for current user
+            // Get current user's semester
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            final Semester userSemester;
+
             if (authentication != null && authentication.getPrincipal() instanceof com.evoting.security.CustomUserDetailsService.UserPrincipal) {
-                com.evoting.security.CustomUserDetailsService.UserPrincipal userPrincipal = 
+                com.evoting.security.CustomUserDetailsService.UserPrincipal userPrincipal =
                     (com.evoting.security.CustomUserDetailsService.UserPrincipal) authentication.getPrincipal();
-                
+
+                // Get user's semester from database
+                Optional<User> userOpt = userService.getUserById(userPrincipal.getId());
+                userSemester = userOpt.isPresent() ? userOpt.get().getSemester() : null;
+
+                // Get user's department as well
+                String userDepartment = userOpt.get().getDepartment();
+
+                // Filter elections by user's semester and department
+                List<Election> filteredElections = activeElections.stream()
+                    .filter(election ->
+                        (election.getSemester() == null || userSemester == null || election.getSemester().equals(userSemester)) &&
+                        (election.getDepartment() == null || userDepartment == null || election.getDepartment().equals(userDepartment)))
+                    .collect(java.util.stream.Collectors.toList());
+
+                System.out.println("DEBUG: Filtered to " + filteredElections.size() + " elections for user's semester");
+
                 List<Map<String, Object>> enrichedElections = new ArrayList<>();
-                for (Election election : activeElections) {
+                for (Election election : filteredElections) {
                     Map<String, Object> electionData = new HashMap<>();
                     electionData.put("id", election.getId());
                     electionData.put("title", election.getTitle());
@@ -56,16 +95,16 @@ public class VoterController {
                     electionData.put("endDate", election.getEndDate());
                     electionData.put("hasVoted", voteService.hasUserVoted(userPrincipal.getId(), election.getId()));
                     electionData.put("totalCandidates", candidateService.countActiveCandidates(election.getId()));
-                    
+
                     enrichedElections.add(electionData);
                 }
-                
+
                 return ResponseEntity.ok(Map.of(
                     "success", true,
                     "elections", enrichedElections
                 ));
             }
-            
+
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "elections", activeElections
@@ -263,12 +302,38 @@ public class VoterController {
         }
     }
     
-    // Get upcoming elections
+    // Get upcoming elections (filtered by user's semester)
     @GetMapping("/elections/upcoming")
     public ResponseEntity<?> getUpcomingElections() {
         try {
             List<Election> upcomingElections = electionService.getUpcomingElections();
-            
+
+            // Get current user's semester
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            final Semester userSemester;
+
+            if (authentication != null && authentication.getPrincipal() instanceof com.evoting.security.CustomUserDetailsService.UserPrincipal) {
+                com.evoting.security.CustomUserDetailsService.UserPrincipal userPrincipal =
+                    (com.evoting.security.CustomUserDetailsService.UserPrincipal) authentication.getPrincipal();
+
+                // Get user's semester and department from database
+                Optional<User> userOpt = userService.getUserById(userPrincipal.getId());
+                userSemester = userOpt.isPresent() ? userOpt.get().getSemester() : null;
+                String userDepartment = userOpt.isPresent() ? userOpt.get().getDepartment() : null;
+
+                // Filter elections by user's semester and department
+                List<Election> filteredElections = upcomingElections.stream()
+                    .filter(election ->
+                        (election.getSemester() == null || userSemester == null || election.getSemester().equals(userSemester)) &&
+                        (election.getDepartment() == null || userDepartment == null || election.getDepartment().equals(userDepartment)))
+                    .collect(java.util.stream.Collectors.toList());
+
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "elections", filteredElections
+                ));
+            }
+
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "elections", upcomingElections
@@ -343,7 +408,7 @@ public class VoterController {
         }
     }
 
-    // Get election results (for completed elections)
+    // Get election results (for completed elections that have been published)
     @GetMapping("/elections/{electionId}/results")
     public ResponseEntity<?> getElectionResults(@PathVariable Long electionId) {
         try {
@@ -357,6 +422,13 @@ public class VoterController {
                 return ResponseEntity.badRequest().body(Map.of(
                     "error", "Results not available",
                     "message", "Results are only available for completed elections"
+                ));
+            }
+
+            if (!election.getResultsPublished()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Results not published",
+                    "message", "The results for this election have not been published yet"
                 ));
             }
 

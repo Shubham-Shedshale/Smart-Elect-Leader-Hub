@@ -1,0 +1,170 @@
+@startuml Detailed Workflow Diagram for Electronic Voting System
+
+title Detailed Electronic Voting System Workflow
+
+|User|
+start
+:Access application URL;
+
+if (Want to register?) then (yes)
+  if (Register as Voter?) then (yes)
+    |Voter Registration|
+    :Click "Register as Voter";
+    :Enter email address;
+    :Submit voter registration;
+    :System validates email format;
+    :Generate OTP code;
+    :Send OTP to email;
+    :Display OTP verification page;
+    :Enter OTP code;
+    :Verify OTP validity;
+    if (OTP valid?) then (yes)
+      :Display password setup;
+      :Enter and confirm password;
+      :Hash and store password;
+      :Set user as verified (VOTER role);
+      :Send welcome email;
+      :Account ready for voter login;
+    else (no)
+      :Show invalid OTP error;
+      :Allow retry (max 3 attempts);
+    endif
+  else (Admin registration)
+    |Admin Registration|
+    note right : Admin accounts created by existing admins
+    :Admin provides email and password;
+    :System creates admin account directly;
+    :Set role as ADMIN;
+    :Account ready for admin login;
+  endif
+else (no)
+endif
+
+if (Login type?) then (Voter Login)
+  |Voter Login|
+  :Use regular login form;
+  :Enter email and password;
+  :Click "Login" button;
+  :Validate voter credentials;
+  :Check user role = VOTER;
+  if (Login successful?) then (yes)
+    :Load Voter Dashboard;
+  else (no)
+    :Show login error;
+  endif
+else (Admin Login)
+  |Admin Login|
+  :Use admin login form;
+  :Enter admin email and password;
+  :Click "Admin Login" button;
+  :Spring Security authentication;
+  :Verify admin role (ADMIN/SUPER_ADMIN);
+  if (Login successful?) then (yes)
+    :Load Admin Dashboard;
+  else (no)
+    :Show access denied error;
+  endif
+endif
+
+if (Role determined?) then (Admin)
+    |Admin|
+    :Load Admin Dashboard;
+    :Display system overview;
+    note right : Active elections, total users, recent activity
+
+    if (Manage Elections?) then (yes)
+      :Navigate to Elections section;
+      :View existing elections list;
+      if (Create new election?) then (yes)
+        :Click "Create Election";
+        :Fill election details;
+        note right : Title, description, dates, settings
+        :Set election status to DRAFT;
+        :Save election to database;
+        :Display success message;
+      else (no)
+      endif
+      :Edit existing elections;
+      :Update election status;
+      :Configure voting rules;
+    endif
+
+    if (Manage Candidates?) then (yes)
+      :Select election;
+      :View candidates list;
+      :Add new candidate;
+      note right : Name, party, bio, manifesto
+      :Upload profile image;
+      :Set candidate status;
+      :Validate candidate data;
+      :Save candidate;
+    endif
+
+    if (Publish Announcements?) then (yes)
+      :Create announcement;
+      :Set type and priority;
+      :Write content;
+      :Set target audience;
+      :Publish announcement;
+    endif
+
+    :Monitor real-time voting;
+    :View election analytics;
+    :Export results data;
+
+  else (Voter)
+    |Voter|
+    :Load Voter Dashboard;
+    :Display available elections;
+
+    if (Browse Elections?) then (yes)
+      :Select election to view;
+      :Display election details;
+      :Show election timeline;
+      :List all candidates;
+      :View candidate profiles;
+      note right : Bio, manifesto, contact info
+      :Read announcements;
+    endif
+
+    if (Ready to Vote?) then (yes)
+      :Check election status;
+      if (Election active?) then (yes)
+        :Verify voting eligibility;
+        note right : Check if already voted, session limits
+        :Display voting interface;
+        :Show candidate list;
+        :Allow candidate selection;
+        :Display voting instructions;
+        :Submit vote;
+        :Validate vote data;
+        :Record vote in database;
+        note right : User ID, Election ID, Candidate ID, timestamp
+        :Update vote counts;
+        :Send confirmation email;
+        :Show vote confirmation;
+        :Prevent double voting;
+      else (no)
+        :Show election status message;
+        note right : Upcoming, Ended, etc.
+      endif
+    endif
+
+    :View personal vote history;
+    :Check election results;
+    note right : When results are published
+  endif
+else (no)
+  :Show login error;
+  note right : Invalid credentials
+  :Allow password reset;
+endif
+
+|User|
+:Click "Logout";
+:Clear session data;
+:Redirect to login page;
+
+stop
+
+@enduml

@@ -28,6 +28,7 @@ import com.evoting.model.AnnouncementType;
 import com.evoting.model.Candidate;
 import com.evoting.model.CandidateStatus;
 import com.evoting.model.Election;
+import com.evoting.model.Semester;
 import com.evoting.model.User;
 import com.evoting.model.UserRole;
 import com.evoting.repository.UserRepository;
@@ -77,14 +78,21 @@ public class AdminController {
     @PostMapping("/elections")
     public ResponseEntity<?> createElection(@Valid @RequestBody CreateElectionRequest request) {
         try {
-            Election election = electionService.createElection(
+            Semester semester = null;
+            if (request.getSemester() != null && !request.getSemester().trim().isEmpty()) {
+                semester = Semester.valueOf(request.getSemester().toUpperCase());
+            }
+
+            Election election = electionService.createElectionWithSemesterAndDepartment(
                 request.getTitle(),
                 request.getDescription(),
                 request.getStartDate(),
                 request.getEndDate(),
-                request.getCreatedBy()
+                request.getCreatedBy(),
+                semester,
+                request.getDepartment()
             );
-            
+
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Election created successfully",
@@ -267,6 +275,23 @@ public class AdminController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
                 "error", "Failed to complete election",
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/elections/{id}/publish-results")
+    public ResponseEntity<?> publishElectionResults(@PathVariable Long id) {
+        try {
+            Election election = electionService.publishElectionResults(id);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Election results published successfully",
+                "election", election
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "Failed to publish election results",
                 "message", e.getMessage()
             ));
         }
@@ -872,8 +897,36 @@ public class AdminController {
     public ResponseEntity<?> createUser(@Valid @RequestBody CreateUserRequest request) {
         try {
             UserRole role = UserRole.valueOf(request.getRole().toUpperCase());
-            User user = userService.createUser(request.getEmail(), request.getPassword(), role);
-            
+
+            // Validate semester and department for voter role
+            if (role == UserRole.VOTER) {
+                if (request.getSemester() == null || request.getSemester().trim().isEmpty()) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Semester is required",
+                        "message", "Please specify a semester for voter accounts"
+                    ));
+                }
+                if (request.getDepartment() == null || request.getDepartment().trim().isEmpty()) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Department is required",
+                        "message", "Please specify a department for voter accounts"
+                    ));
+                }
+            }
+
+            Semester semester = null;
+            if (request.getSemester() != null && !request.getSemester().trim().isEmpty()) {
+                semester = Semester.valueOf(request.getSemester().toUpperCase());
+            }
+
+            User user = userService.createUserWithSemesterAndDepartment(
+                request.getEmail(),
+                request.getPassword(),
+                role,
+                semester,
+                request.getDepartment()
+            );
+
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "User created successfully",
@@ -1035,7 +1088,9 @@ public class AdminController {
         private LocalDateTime endDate;
         @NotNull
         private Long createdBy;
-        
+        private String semester; // SEMESTER_1, SEMESTER_2, etc.
+        private String department; // Department name
+
         // Getters and Setters
         public String getTitle() { return title; }
         public void setTitle(String title) { this.title = title; }
@@ -1047,6 +1102,10 @@ public class AdminController {
         public void setEndDate(LocalDateTime endDate) { this.endDate = endDate; }
         public Long getCreatedBy() { return createdBy; }
         public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+        public String getSemester() { return semester; }
+        public void setSemester(String semester) { this.semester = semester; }
+        public String getDepartment() { return department; }
+        public void setDepartment(String department) { this.department = department; }
     }
     
     public static class UpdateElectionRequest {
@@ -1157,7 +1216,9 @@ public class AdminController {
         private String role; // VOTER, ADMIN, SUPER_ADMIN
         private String firstName;
         private String lastName;
-        
+        private String semester; // SEMESTER_1, SEMESTER_2, etc. (required for VOTER role)
+        private String department; // Department name (required for VOTER role)
+
         // Getters and Setters
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
@@ -1169,6 +1230,10 @@ public class AdminController {
         public void setFirstName(String firstName) { this.firstName = firstName; }
         public String getLastName() { return lastName; }
         public void setLastName(String lastName) { this.lastName = lastName; }
+        public String getSemester() { return semester; }
+        public void setSemester(String semester) { this.semester = semester; }
+        public String getDepartment() { return department; }
+        public void setDepartment(String department) { this.department = department; }
     }
     
     public static class UpdateUserRequest {

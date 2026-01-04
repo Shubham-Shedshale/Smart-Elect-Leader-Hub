@@ -1,0 +1,106 @@
+@startuml ER Diagram for Electronic Voting System
+!define Table(name,desc) class name as "desc" << (T,#FFAAAA) >>
+!define primary_key(x) <b>x</b>
+!define foreign_key(x) <i>x</i>
+
+' Entities
+Table(User, "User\nTable: users") {
+  + primary_key(id): Long
+  + email: String (unique)
+  + password_hash: String
+  + first_name: String
+  + last_name: String
+  + role: UserRole
+  + is_active: Boolean
+  + is_verified: Boolean
+  + otp_code: String
+  + otp_expires_at: LocalDateTime
+  + last_login: LocalDateTime
+  + foreign_key(created_by): Long
+  + created_at: LocalDateTime
+  + updated_at: LocalDateTime
+}
+
+Table(Election, "Election\nTable: elections") {
+  + primary_key(id): Long
+  + title: String
+  + description: String
+  + start_date: LocalDateTime
+  + end_date: LocalDateTime
+  + status: ElectionStatus
+  + max_votes_per_user: Integer
+  + is_anonymous: Boolean
+  + allow_multiple_candidates: Boolean
+  + foreign_key(created_by): Long
+  + created_at: LocalDateTime
+  + updated_at: LocalDateTime
+}
+
+Table(Candidate, "Candidate\nTable: candidates") {
+  + primary_key(id): Long
+  + foreign_key(election_id): Long
+  + full_name: String
+  + party_name: String
+  + position: String
+  + bio: String
+  + profile_image: String
+  + contact_number: String
+  + email_address: String
+  + website_url: String
+  + manifesto: String
+  + status: CandidateStatus
+  + votes_count: Long
+  + foreign_key(created_by): Long
+  + created_at: LocalDateTime
+  + updated_at: LocalDateTime
+}
+
+Table(Vote, "Vote\nTable: votes") {
+  + primary_key(id): Long
+  + foreign_key(user_id): Long
+  + foreign_key(election_id): Long
+  + foreign_key(candidate_id): Long
+  + ip_address: String
+  + user_agent: String
+  + session_id: String
+  + voted_at: LocalDateTime
+}
+
+Table(Announcement, "Announcement\nTable: announcements") {
+  + primary_key(id): Long
+  + foreign_key(election_id): Long
+  + title: String
+  + content: String
+  + type: AnnouncementType
+  + priority: AnnouncementPriority
+  + is_published: Boolean
+  + published_at: LocalDateTime
+  + expires_at: LocalDateTime
+  + target_audience: String
+  + attachment_url: String
+  + foreign_key(created_by): Long
+  + created_at: LocalDateTime
+  + updated_at: LocalDateTime
+}
+
+' Relationships
+User ||--o{ Vote : "has many"
+User ||--o{ Election : "creates many (created_by)"
+User ||--o{ Candidate : "creates many (created_by)"
+User ||--o{ Announcement : "creates many (created_by)"
+User ||--o{ User : "created by (created_by)"
+
+Election ||--o{ Candidate : "has many"
+Election ||--o{ Vote : "has many"
+Election ||--o{ Announcement : "has many"
+
+Candidate ||--o{ Vote : "has many"
+
+Vote }o--|| User : "belongs to"
+Vote }o--|| Election : "belongs to"
+Vote }o--|| Candidate : "belongs to"
+
+Announcement }o--|| Election : "belongs to"
+Announcement }o--|| User : "created by (created_by)"
+
+@enduml
