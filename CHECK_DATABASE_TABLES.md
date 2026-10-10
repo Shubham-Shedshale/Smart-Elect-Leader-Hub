@@ -56,7 +56,7 @@ SHOW CREATE TABLE users;
 If you're using XAMPP:
 
 1. **Open**: http://localhost/phpmyadmin
-2. **Login**: username: `root`, password: `aduadi47`
+2. **Login**: username: `USERNAME`, password: `PASSWORD`
 3. **Select Database**: Click on `electronic_voting_db`
 4. **View Tables**: You'll see all 5 tables listed
 5. **Check Structure**: Click on any table name to see its columns
@@ -99,8 +99,8 @@ import java.sql.*;
 public class TestDatabaseConnection {
     public static void main(String[] args) {
         String url = "jdbc:mysql://localhost:3306/electronic_voting_db";
-        String username = "root";
-        String password = "aduadi47";
+        String username = "USERNAME";
+        String password = "PASSWORD";
         
         try (Connection conn = DriverManager.getConnection(url, username, password)) {
             DatabaseMetaData metaData = conn.getMetaData();
@@ -193,7 +193,7 @@ curl http://localhost:8888/actuator/health/db
 1. **Verify MySQL service**: Check if MySQL is running
 2. **Check port**: Default is 3306
 3. **Check firewall**: Ensure MySQL port is not blocked
-4. **Check credentials**: username: `root`, password: `aduadi47`
+4. **Check credentials**: username: `USERNAME`, password: `PASSWORD`
 
 ---
 

@@ -1,0 +1,69 @@
+# Maven build output
+target/
+
+# IntelliJ IDEA
+.idea/
+
+# Eclipse metadata
+.classpath
+.project
+.settings/
+
+# VS Code workspace settings
+.vscode/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Local configuration overrides
+application-local.properties
+application-secret.properties
+
+# Compiled Java files
+*.class
+
+# Logs
+*.log
+logs/
+
+# Temporary session and cookie files
+cookies.txt
+*_cookies.txt
+session_cookies.txt
+test_session.txt
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+
+# Temporary admin request data
+admin-request.json
+
+# Temporary test responses
+temp_health.json
+temp_create_response.json
+temp_login_response.json
+admin-request.json
+
+# Additional session files
+new_session_cookies.txt
+
+# Local credentials and environment files
+application-local.properties
+application-secret.properties
+# Ignore generated and temporary files
+.idea/
+target/
+admin-request.json
+admin_cookies.txt
+cookies.txt
+new_session_cookies.txt
+session_cookies.txt
+test_session.txt
+temp_health.json
+temp_create_response.json
+temp_login_response.json
