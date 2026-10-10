@@ -51,7 +51,8 @@ public class SecurityConfig {
             throws Exception {
 
         http
-            .csrf(csrf -> csrf.disable())
+            // Keep CSRF protection enabled for session-based authentication.
+            // Configure CSRF tokens in the frontend for state-changing requests.
 
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
@@ -73,7 +74,7 @@ public class SecurityConfig {
                     "/admin/login"
                 ).permitAll()
 
-                // Public authentication endpoints
+                // Public login, registration and OTP endpoints
                 .requestMatchers(
                     "/api/health",
                     "/api/auth/login",
@@ -83,7 +84,8 @@ public class SecurityConfig {
                     "/api/auth/resend-otp"
                 ).permitAll()
 
-                // Admin creation must not be publicly accessible
+                // Never allow unauthenticated admin account creation.
+                // Initial admin provisioning must use a controlled process.
                 .requestMatchers("/api/auth/create-admin")
                     .hasRole("ADMIN")
 
@@ -91,15 +93,15 @@ public class SecurityConfig {
                 .requestMatchers("/admin/**", "/api/admin/**")
                     .hasRole("ADMIN")
 
-                // Session endpoints should require authentication
+                // Session endpoints require authentication
                 .requestMatchers("/api/session/**")
                     .authenticated()
 
-                // All remaining APIs require authentication
+                // All other APIs require authentication
                 .requestMatchers("/api/**")
                     .authenticated()
 
-                // Everything else requires authentication
+                // All remaining routes require authentication
                 .anyRequest()
                     .authenticated()
             )
@@ -133,6 +135,7 @@ public class SecurityConfig {
                         response.setStatus(
                                 HttpServletResponse.SC_UNAUTHORIZED);
                         response.setContentType("application/json");
+                        response.setCharacterEncoding("UTF-8");
 
                         response.getWriter().write(
                             "{\"error\":\"SESSION_EXPIRED\","
