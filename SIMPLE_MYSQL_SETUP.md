@@ -3,8 +3,8 @@
 ## 🎯 **You're Good to Go!**
 
 Your application is now configured for **MySQL** with the credentials:
-- **Username**: `root`
-- **Password**: `aduadi47`
+- **Username**: `USERNAME`
+- **Password**: `PASSWORD`
 - **Database**: `electronic_voting_db`
 
 ## 🚀 **Quick Setup (2 Options)**
@@ -28,7 +28,7 @@ Your application is now configured for **MySQL** with the credentials:
 
 1. **Download MySQL**: https://dev.mysql.com/downloads/installer/
 2. **Install** with "Developer Default" configuration
-3. **Set root password**: Use `aduadi47` (or remember what you set!)
+3. **Set root password**: Use `PASSWORD` (or remember what you set!)
 4. **Create database**:
    ```bash
    mysql -u root -p
@@ -64,7 +64,7 @@ When MySQL is running and you start the application:
 | Issue | Solution |
 |-------|----------|
 | "Connection refused" | MySQL service not running (start XAMPP MySQL) |
-| "Access denied" | Wrong password - use `aduadi47` |
+| "Access denied" | Wrong password - use `PASSWORD` |
 | "Unknown database" | Create `electronic_voting_db` in phpMyAdmin |
 | "Port 3306 in use" | Stop other MySQL instances or change port |
 
