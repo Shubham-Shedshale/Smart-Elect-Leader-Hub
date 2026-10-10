@@ -19,71 +19,94 @@ import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
-// Disabled method security for simplified school project authentication
-// @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
-    
+
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
-    
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    
+
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        DaoAuthenticationProvider authProvider =
+                new DaoAuthenticationProvider();
+
         authProvider.setUserDetailsService(customUserDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
+
         return authProvider;
     }
-    
+
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
-    
+
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http)
+            throws Exception {
+
         http
             .csrf(csrf -> csrf.disable())
-            // Temporarily disable CORS to fix startup issue
-            // .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 .maximumSessions(1)
-                .maxSessionsPreventsLogin(false))
-            .authorizeHttpRequests(authz -> authz
-                // Public endpoints - these must come first
-                .requestMatchers("/login", "/register", "/otp/**", "/css/**", "/js/**", "/images/**", "/actuator/**").permitAll()
-                .requestMatchers("/admin/login").permitAll()
-                .requestMatchers("/").permitAll()
-                .requestMatchers("/api/health").permitAll()
-                .requestMatchers("/api/auth/create-admin").permitAll()
-                .requestMatchers("/api/auth/admin-login").permitAll()
-                .requestMatchers("/api/auth/login").permitAll()
-                .requestMatchers("/api/auth/register-voter").permitAll()
-                .requestMatchers("/api/auth/verify-otp").permitAll()
-                .requestMatchers("/api/auth/resend-otp").permitAll()
-                
-                // Session management endpoints
-                .requestMatchers("/api/session/**").permitAll()
-                
-                // Admin endpoints (temporarily disabled for testing)
-                .requestMatchers("/admin/dashboard").permitAll()
-                .requestMatchers("/api/admin/dashboard/stats").permitAll()
-                .requestMatchers("/api/admin/**").permitAll()
-                .requestMatchers("/admin/**").permitAll()
-                
-                // All other API endpoints require authentication
-                .requestMatchers("/api/**").authenticated()
-                
-                // All other requests need authentication
-                .anyRequest().authenticated()
+                .maxSessionsPreventsLogin(false)
             )
+
+            .authorizeHttpRequests(authz -> authz
+
+                // Public pages and static resources
+                .requestMatchers(
+                    "/",
+                    "/login",
+                    "/register",
+                    "/otp/**",
+                    "/css/**",
+                    "/js/**",
+                    "/images/**",
+                    "/admin/login"
+                ).permitAll()
+
+                // Public authentication endpoints
+                .requestMatchers(
+                    "/api/health",
+                    "/api/auth/login",
+                    "/api/auth/admin-login",
+                    "/api/auth/register-voter",
+                    "/api/auth/verify-otp",
+                    "/api/auth/resend-otp"
+                ).permitAll()
+
+                // Admin creation must not be publicly accessible
+                .requestMatchers("/api/auth/create-admin")
+                    .hasRole("ADMIN")
+
+                // Admin pages and APIs require the ADMIN role
+                .requestMatchers("/admin/**", "/api/admin/**")
+                    .hasRole("ADMIN")
+
+                // Session endpoints should require authentication
+                .requestMatchers("/api/session/**")
+                    .authenticated()
+
+                // All remaining APIs require authentication
+                .requestMatchers("/api/**")
+                    .authenticated()
+
+                // Everything else requires authentication
+                .anyRequest()
+                    .authenticated()
+            )
+
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
+
             .logout(logout -> logout
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/login?logout=true")
@@ -92,37 +115,37 @@ public class SecurityConfig {
                 .invalidateHttpSession(true)
                 .deleteCookies("JSESSIONID")
             )
-            // Add exception handling for session timeout
+
             .exceptionHandling(exception -> exception
-                .authenticationEntryPoint((request, response, authException) -> {
-                    // Check if it's an AJAX request
-                    String acceptHeader = request.getHeader("Accept");
-                    String xRequestedWith = request.getHeader("X-Requested-With");
-                    
-                    if ("XMLHttpRequest".equals(xRequestedWith) || 
-                        (acceptHeader != null && acceptHeader.contains("application/json"))) {
-                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                .authenticationEntryPoint((request, response,
+                                           authException) -> {
+
+                    String acceptHeader =
+                            request.getHeader("Accept");
+
+                    String xRequestedWith =
+                            request.getHeader("X-Requested-With");
+
+                    if ("XMLHttpRequest".equals(xRequestedWith)
+                            || (acceptHeader != null
+                            && acceptHeader.contains("application/json"))) {
+
+                        response.setStatus(
+                                HttpServletResponse.SC_UNAUTHORIZED);
                         response.setContentType("application/json");
-                        response.getWriter().write("{\"error\":\"SESSION_EXPIRED\",\"message\":\"Session expired\",\"redirect\":\"/login\"}");
+
+                        response.getWriter().write(
+                            "{\"error\":\"SESSION_EXPIRED\","
+                            + "\"message\":\"Session expired\","
+                            + "\"redirect\":\"/login\"}"
+                        );
+
                     } else {
                         response.sendRedirect("/login?expired=true");
                     }
                 })
             );
-        
+
         return http.build();
     }
-    
-    // @Bean
-    // public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
-    //     org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-    //     configuration.setAllowedOriginPatterns(java.util.List.of("http://localhost:*", "http://127.0.0.1:*"));
-    //     configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-    //     configuration.setAllowedHeaders(java.util.List.of("Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"));
-    //     configuration.setAllowCredentials(true);
-    //     
-    //     org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
-    //     source.registerCorsConfiguration("/**", configuration);
-    //     return source;
-    // }
 }
